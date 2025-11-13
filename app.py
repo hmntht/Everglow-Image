@@ -23,7 +23,6 @@ API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}
 def call_gemini_api(base64_image_data, prompt):
     """Sends the image and prompt to the Gemini API."""
     
-    # ... (API payload and request logic remains the same)
     payload = {
         "contents": [
             {
@@ -68,9 +67,44 @@ def call_gemini_api(base64_image_data, prompt):
         st.error(f"An unexpected error occurred: {e}")
         return None
 
+# --- Callback Function for File Uploader ---
+def handle_upload():
+    """Converts uploaded file to Base64 and stores it in session state."""
+    uploaded_file = st.session_state.file_uploader
+    if uploaded_file is not None:
+        file_bytes = uploaded_file.getvalue()
+        base64_data = base64.b64encode(file_bytes).decode('utf-8')
+        
+        # Store data in Session State
+        st.session_state.base64_data = base64_data
+        st.session_state.filename = uploaded_file.name
+    else:
+        # Clear data if file is cleared
+        st.session_state.base64_data = ""
+        st.session_state.filename = "Awaiting Source Image"
+
+
 # --- Streamlit Interaction Logic ---
 
-# Check if an API call was triggered by the front-end JavaScript
+# Initialize session state keys
+if 'base64_data' not in st.session_state:
+    st.session_state.base64_data = ""
+if 'filename' not in st.session_state:
+    st.session_state.filename = "Awaiting Source Image"
+
+
+# 1. Place the Native Streamlit File Uploader
+# Use a key and the callback function for state management
+uploaded_file_widget = st.file_uploader(
+    "Upload Source Image (Max 20MB)", 
+    type=['png', 'jpg', 'jpeg'],
+    key="file_uploader", # Key to access the widget value
+    on_change=handle_upload, # Function to run when file changes
+    help="Use the native Streamlit uploader for reliable file handling."
+)
+
+
+# 2. Check for External API Call (Triggered by HTML Button)
 if st.query_params.get('action') == ['generate']:
     img_data_list = st.query_params.get('imageData')
     prompt_list = st.query_params.get('prompt')
@@ -90,27 +124,12 @@ if st.query_params.get('action') == ['generate']:
     st.stop()
 
 
-# --- Main HTML Frontend Rendering (Hybrid Setup) ---
+# 3. Pass Session State Data to Custom HTML
+base64_data_for_html = st.session_state.base64_data
+filename = st.session_state.filename
 
-# 1. Place the Native Streamlit File Uploader outside the custom HTML
-uploaded_file = st.file_uploader(
-    "Upload Source Image (Max 20MB)", 
-    type=['png', 'jpg', 'jpeg'],
-    help="Use the native Streamlit uploader for reliable file handling."
-)
-
-base64_data_for_html = ""
-filename = "Awaiting Source Image"
-
-if uploaded_file is not None:
-    # 2. Convert the uploaded file object directly to Base64 in Python
-    file_bytes = uploaded_file.getvalue()
-    base64_data_for_html = base64.b64encode(file_bytes).decode('utf-8')
-    filename = uploaded_file.name
-    
-    # 3. Use an st.code block to pass the file data and name to the custom HTML
-    # The HTML/JS will read this hidden code block to get the data
-    st.code(f"UPLOADED_BASE64:{base64_data_for_html}\nUPLOADED_FILENAME:{filename}", language="")
+# Use an st.code block to pass the file data and name to the custom HTML
+st.code(f"UPLOADED_BASE64:{base64_data_for_html}\nUPLOADED_FILENAME:{filename}", language="")
 
 
 # 4. Load and render the custom HTML/CSS
