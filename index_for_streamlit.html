@@ -193,20 +193,29 @@
         
         let uploadedFileBase64 = null;
         let lastResultBase64 = null;
+        let checkInterval = null;
 
 
-        // --- New Function: Check for Data from Python Backend ---
-        function checkPythonData() {
+        // --- New Function: Check for Data from Python Backend (Polling) ---
+        function checkPythonData(attemptsLeft) {
+            
+            // Check body content for uploaded file data
             const bodyContent = document.body.textContent;
             
-            // 1. Check for UPLOADED data passed from Python
             const uploadPrefix = "UPLOADED_BASE64:";
             const filenamePrefix = "UPLOADED_FILENAME:";
+            const resultPrefix = "RESULT_IMAGE_BASE64:";
             
-            if (bodyContent.includes(uploadPrefix)) {
+            // --- 1. Check for UPLOADED data passed from Python (File is uploaded) ---
+            if (bodyContent.includes(uploadPrefix) && bodyContent.includes(filenamePrefix)) {
                 
                 try {
-                    // Extract data
+                    // Stop polling if data is found
+                    if (checkInterval) {
+                        clearInterval(checkInterval);
+                        checkInterval = null;
+                    }
+
                     const uploadStartIndex = bodyContent.indexOf(uploadPrefix) + uploadPrefix.length;
                     const uploadEndIndex = bodyContent.indexOf(filenamePrefix);
                     const base64Data = bodyContent.substring(uploadStartIndex, uploadEndIndex).trim();
@@ -214,28 +223,38 @@
                     const filenameStartIndex = bodyContent.indexOf(filenamePrefix) + filenamePrefix.length;
                     const filename = bodyContent.substring(filenameStartIndex).trim();
 
-                    uploadedFileBase64 = base64Data;
+                    if (base64Data.length > 10) { 
+                        uploadedFileBase64 = base64Data;
+                        
+                        // Display the image preview using the data URI
+                        originalImagePreview.src = `data:image/jpeg;base64,${uploadedFileBase64}`; 
+                        originalImagePreview.style.display = 'block';
+                        originalImagePlaceholder.style.display = 'none';
 
-                    // Display the image preview using the data URI
-                    originalImagePreview.src = `data:image/jpeg;base64,${uploadedFileBase64}`; 
-                    originalImagePreview.style.display = 'block';
-                    originalImagePlaceholder.style.display = 'none';
-
-                    // Update status
-                    inputStatus.textContent = `Source loaded from Python: ${filename}`;
-                    magicButton.disabled = false;
-                    messageBox.textContent = 'Image is ready for casting.';
+                        // Update status
+                        inputStatus.textContent = `Source loaded from Python: ${filename}`;
+                        magicButton.disabled = false;
+                        messageBox.textContent = 'Image is ready for casting.';
+                    } 
                 } catch (error) {
                     messageBox.textContent = 'Error parsing image data from Python.';
                     console.error("Python data parsing error:", error);
-                    magicButton.disabled = true;
+                }
+            } else if (attemptsLeft <= 0) {
+                 // Stop polling if attempts run out
+                 if (checkInterval) {
+                    clearInterval(checkInterval);
+                    checkInterval = null;
                 }
             }
 
-
-            // 2. Check for RESULT data (from API call)
-            const resultPrefix = "RESULT_IMAGE_BASE64:";
+            // --- 2. Check for RESULT data (from API call) ---
             if (bodyContent.includes(resultPrefix)) {
+                 // Stop polling immediately if result is found
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                    checkInterval = null;
+                }
                 
                 const startIndex = bodyContent.indexOf(resultPrefix) + resultPrefix.length;
                 lastResultBase64 = bodyContent.substring(startIndex).trim();
@@ -299,8 +318,16 @@
         });
 
         
-        // Run the processing function once the DOM is ready to check for data from Python
-        checkPythonData(); 
+        // Start polling when the DOM is ready (runs every 100ms for 30 attempts, 3 seconds total)
+        let attempts = 30; 
+        checkInterval = setInterval(() => {
+            checkPythonData(attempts);
+            attempts--;
+            if (attempts < 0) {
+                 clearInterval(checkInterval);
+                 checkInterval = null;
+            }
+        }, 100); 
         
         // Download function
         downloadButton.addEventListener('click', () => {
@@ -310,10 +337,4 @@
                 link.download = 'transmuted_image.png';
                 document.body.appendChild(link);
                 link.click();
-                document.body.removeChild(link);
-            }
-        });
-    }); 
-    </script>
-</body>
-</html>
+                document.
