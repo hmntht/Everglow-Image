@@ -206,7 +206,8 @@
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result.split(',')[1]); // Only get the base64 data part
+                // Only get the base64 data part (after the comma)
+                reader.onload = () => resolve(reader.result.split(',')[1]); 
                 reader.onerror = error => reject(error);
             });
         }
@@ -215,21 +216,20 @@
             const file = event.target.files[0];
             if (file) {
                 try {
-                    // 1. Display the original image
-                    const objectUrl = URL.createObjectURL(file);
-                    originalImagePreview.src = objectUrl;
+                    // 1. Convert to Base64 first (This is essential for the API call and is the robust preview method)
+                    uploadedFileBase64 = await fileToBase64(file); 
+                    
+                    // 2. Use the Base64 data for the preview
+                    originalImagePreview.src = `data:${file.type};base64,${uploadedFileBase64}`;
                     originalImagePreview.style.display = 'block';
                     originalImagePlaceholder.style.display = 'none';
                     
-                    // 2. Convert to Base64
-                    uploadedFileBase64 = await fileToBase64(file);
-                    
-                    // 3. Update status and enable button
+                    // 3. Update status
                     inputStatus.textContent = `Source loaded: ${file.name}`;
                     magicButton.disabled = false;
                     messageBox.textContent = '';
                 } catch (error) {
-                    messageBox.textContent = 'Error loading file. Try a different format or smaller file.';
+                    messageBox.textContent = 'Error loading file. Check file size/format.';
                     magicButton.disabled = true;
                     console.error("File loading error:", error);
                 }
@@ -270,7 +270,8 @@
                 const startIndex = bodyContent.indexOf(prefix) + prefix.length;
                 lastResultBase64 = bodyContent.substring(startIndex).trim();
                 
-                const imageUrl = `data:image/jpeg;base64,${lastResultBase64}`;
+                // Note: The model returns a base64 string for a processed image, typically PNG/JPEG
+                const imageUrl = `data:image/png;base64,${lastResultBase64}`; 
                 resultImagePreview.src = imageUrl;
                 resultImagePreview.style.display = 'block';
                 resultImagePlaceholder.style.display = 'none';
@@ -302,7 +303,8 @@
         downloadButton.addEventListener('click', () => {
             if (lastResultBase64) {
                 const link = document.createElement('a');
-                link.href = `data:image/png;base64,${lastResultBase64}`;
+                // Use image/png for download, as that's what the model often outputs
+                link.href = `data:image/png;base64,${lastResultBase64}`; 
                 link.download = 'transmuted_image.png';
                 document.body.appendChild(link);
                 link.click();
