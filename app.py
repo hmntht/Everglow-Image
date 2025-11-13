@@ -130,4 +130,3 @@ except FileNotFoundError:
 
 # Render the HTML using the Streamlit component
 st.html(html_code)
-
