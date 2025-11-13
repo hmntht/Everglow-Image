@@ -3,58 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual Transmutation Forge</title>
+    <title>The Visual Transmutation Forge</title>
     
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
+
     <style>
         :root {
-            --bg-dark: #0f0a28;
-            --card-dark: #1a1538;
-            --text-light: #ffffff;
-            --accent-pink: #ff6e8c;
-            --accent-blue: #6e8cff;
+            --color-bg-dark: #1f2937; /* Gray-800 */
+            --color-card: #374151; /* Gray-700 */
+            --color-text-light: #f9fafb; /* Gray-50 */
+            --color-accent-purple: #8b5cf6; /* Violet-500 */
+            --color-accent-hover: #7c3aed; /* Violet-600 */
         }
 
         body {
-            background-color: var(--bg-dark);
-            color: var(--text-light);
+            background-color: var(--color-bg-dark);
+            color: var(--color-text-light);
             font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 20px;
         }
 
-        .floating-card {
-            background-color: var(--card-dark);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 1rem;
+        }
+
+        .forge-card {
+            background-color: var(--color-card);
+            border-radius: 1.5rem;
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.4);
+            padding: 2rem;
+            border: 1px solid var(--color-accent-purple);
+            text-align: center;
         }
 
         .glowing-title {
-            color: var(--accent-pink);
-            text-shadow: 0 0 15px rgba(255, 110, 140, 0.6);
-            animation: glow 1.5s infinite alternate;
+            color: var(--color-accent-purple);
+            text-shadow: 0 0 15px rgba(139, 92, 246, 0.7);
         }
 
-        @keyframes glow {
-            from { text-shadow: 0 0 10px rgba(255, 110, 140, 0.4); }
-            to { text-shadow: 0 0 20px rgba(255, 110, 140, 0.8); }
-        }
-
-        .btn-primary {
-            background-color: var(--accent-pink);
-            color: var(--text-light);
+        .btn-magic {
+            background-color: var(--color-accent-purple);
+            color: var(--color-text-light);
+            transition: background-color 0.3s, transform 0.1s;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.6);
             border: none;
-            transition: all 0.3s ease;
+            padding: 1rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
         }
 
-        .btn-primary:hover {
-            background-color: #e05e7c;
+        .btn-magic:hover:not(:disabled) {
+            background-color: var(--color-accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-magic:disabled {
+            background-color: #6d5b94;
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.7;
         }
 
         .textarea-input {
-            background-color: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: var(--text-light);
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: var(--color-text-light);
             resize: vertical;
-            min-height: 100px;
+            min-height: 120px;
+            width: 100%;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-sizing: border-box;
+        }
+        
+        .image-viewport {
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 0.5rem;
+            background-color: rgba(0, 0, 0, 0.1);
         }
         
         .image-preview {
@@ -62,82 +98,82 @@
             height: auto;
             max-height: 400px;
             object-fit: contain;
-        }
-        
-        /* Flexbox for image panels */
-        #image-panels-container {
-            display: flex;
-            flex-wrap: wrap; /* Allows wrapping on small screens */
-            gap: 20px;
-            justify-content: center;
+            border-radius: 0.5rem;
         }
 
-        .image-panel {
-            flex: 1 1 300px; /* Allows panels to shrink/grow and ensures min width */
-            min-height: 250px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        .image-panels-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        @media (min-width: 768px) {
+            .image-panels-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <div style="max-width: 700px; margin: auto; padding: 20px 0;">
+    <div class="container">
         
-        <header style="text-align: center; margin-bottom: 30px;">
-            <h1 class="glowing-title" style="font-size: 3rem; font-weight: 800; margin-bottom: 5px;">Visual Forge</h1>
-            <h2 style="font-size: 1.25rem; color: rgba(255, 255, 255, 0.7); font-weight: 600; letter-spacing: 2px;">THE TRANSMUTATION ENGINE</h2>
+        <header style="text-align: center; margin-bottom: 2rem;">
+            <h1 class="glowing-title" style="font-size: 3rem; font-weight: 800; margin-bottom: 0.5rem;">The Visual Forge</h1>
+            <h2 style="font-size: 1.25rem; color: #9ca3af; font-weight: 600; letter-spacing: 2px;">Transmutation Engine</h2>
         </header>
 
-        <div class="floating-card" style="padding: 30px; border-radius: 15px; text-align: center; space-y: 20px;">
+        <div class="forge-card">
             
-            <p style="color: rgba(255, 255, 255, 0.9); font-size: 1.1rem; margin-bottom: 20px;">
-                Upload an image and whisper your **Transmutation Spell** to refine its essence.
+            <p style="color: #d1d5db; font-size: 1.1rem; margin-bottom: 2rem;">
+                Upload a source image and whisper your **Spell** to initiate the change.
             </p>
             
-            <div style="margin-bottom: 15px;">
-                <label for="image-input" class="btn-primary" 
-                       style="display: inline-flex; align-items: center; padding: 12px 25px; border-radius: 10px; font-weight: 600; cursor: pointer;">
-                    <i class="ph ph-upload-simple" style="font-size: 1.2rem; margin-right: 8px;"></i> Upload Image
+            <div style="margin-bottom: 1.5rem;">
+                <label for="image-input" class="btn-magic" 
+                       style="display: inline-flex; align-items: center; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">
+                    <i class="ph ph-upload-simple" style="font-size: 1.2rem; margin-right: 0.5rem;"></i> Upload Source
                 </label>
-                
                 <input type="file" id="image-input" accept="image/*" style="display: none;">
             </div>
 
-            <div id="input-status" style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin-bottom: 20px;">
-                Status: Awaiting Source Image.
+            <div id="input-status" style="font-size: 0.85rem; color: #9ca3af; margin-bottom: 1.5rem;">
+                Status: Ready to cast.
             </div>
 
-            <textarea id="prompt-input" rows="4" placeholder="e.g., Change the person's shirt color to metallic silver, or 'Separate the subject onto a clean white background.'" class="textarea-input" style="width: 100%; box-sizing: border-box; padding: 15px; border-radius: 10px; font-size: 0.9rem; margin-bottom: 20px;"></textarea>
+            <textarea id="prompt-input" rows="4" placeholder="e.g., Change the person's shirt to leather armor, or 'Separate the main subject and place them on a clean, professional grey background.'" class="textarea-input" style="margin-bottom: 2rem;"></textarea>
 
-            <button id="magic-button" class="btn-primary" style="width: 100%; padding: 15px; border-radius: 10px; font-weight: 700; font-size: 1.1rem; cursor: pointer; margin-bottom: 30px;" disabled>
+            <button id="magic-button" class="btn-magic" style="width: 100%; padding: 1rem; font-size: 1.1rem; margin-bottom: 2rem;" disabled>
                 <span id="magic-button-text">CAST THE TRANSMUTATION SPELL!</span>
-                <div id="loading-amulet" class="hidden" style="display: none; width: 20px; height: 20px; border: 3px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto;"></div>
+                <div id="loading-amulet" class="hidden" style="display: none; width: 24px; height: 24px; border: 4px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto;"></div>
             </button>
             
-            <div id="message-box" style="color: var(--accent-pink); font-size: 0.9rem; font-weight: 600; margin-bottom: 20px;"></div>
+            <div id="message-box" style="color: #f87171; font-size: 0.9rem; font-weight: 600; margin-bottom: 1.5rem;"></div>
 
-            <div id="image-panels-container">
+            <div class="image-panels-grid">
                 <div class="image-panel">
-                    <div style="font-size: 0.9rem; font-weight: 600; color: rgba(255, 255, 255, 0.7); margin-bottom: 10px;">Source Essence</div>
-                    <img id="original-image-preview" class="image-preview" src="#" alt="Original Uploaded Image" style="display: none; border: 1px solid rgba(255, 255, 255, 0.1);">
-                    <div id="original-image-placeholder" style="color: rgba(255, 255, 255, 0.5); padding: 50px;">Upload to begin.</div>
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #d1d5db; margin-bottom: 0.5rem;">Source Image</div>
+                    <div class="image-viewport">
+                        <img id="original-image-preview" class="image-preview" src="#" alt="Original Uploaded Image" style="display: none;">
+                        <div id="original-image-placeholder" style="color: #9ca3af; padding: 2rem;">Upload to begin.</div>
+                    </div>
                 </div>
 
                 <div class="image-panel">
-                    <div style="font-size: 0.9rem; font-weight: 600; color: rgba(255, 255, 255, 0.7); margin-bottom: 10px;">Transmuted Result</div>
-                    <img id="result-image-preview" class="image-preview" src="#" alt="Generated Image" style="display: none; border: 1px solid var(--accent-pink);">
-                    <div id="result-image-placeholder" style="color: rgba(255, 255, 255, 0.5); padding: 50px;">Result appears here.</div>
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #d1d5db; margin-bottom: 0.5rem;">Transmuted Result</div>
+                    <div class="image-viewport" style="border-color: var(--color-accent-purple);">
+                        <img id="result-image-preview" class="image-preview" src="#" alt="Generated Image" style="display: none;">
+                        <div id="result-image-placeholder" style="color: #9ca3af; padding: 2rem;">Result appears here.</div>
+                    </div>
                 </div>
             </div>
             
-            <div id="result-actions" style="margin-top: 20px; display: none;">
-                <button id="download-button" class="btn-primary" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                    <i class="ph ph-download-simple" style="font-size: 1.2rem; margin-right: 8px;"></i> Download Transmutation
+            <div id="result-actions" style="margin-top: 2rem; display: none;">
+                <button id="download-button" class="btn-magic" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
+                    <i class="ph ph-download-simple" style="font-size: 1.2rem; margin-right: 0.5rem;"></i> Download Result
                 </button>
             </div>
             
@@ -213,7 +249,7 @@
             magicButton.disabled = true;
             magicButtonText.style.display = 'none';
             loadingAmulet.style.display = 'block';
-            messageBox.textContent = 'Casting spell... please wait.';
+            messageBox.textContent = 'Casting spell... please wait (This may take 30-60 seconds).';
             resultActions.style.display = 'none';
             
             // 2. The critical step: Trigger a Streamlit rerun with query parameters
@@ -243,7 +279,7 @@
                 resultActions.style.display = 'flex';
                 
             } else if (bodyContent.includes("Error:")) {
-                messageBox.textContent = 'Error during Transmutation. Check the console for details.';
+                messageBox.textContent = 'Error during Transmutation. Check the Streamlit logs for details.';
             } else {
                 return;
             }
