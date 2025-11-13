@@ -107,6 +107,7 @@
                 
                 <input type="file" id="image-input" accept="image/*" style="display: none;">
             </div>
+
             <div id="input-status" style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin-bottom: 20px;">
                 Status: Awaiting Source Image.
             </div>
@@ -145,8 +146,9 @@
     </div>
 
     <script>
+    // FIX: Wait for the DOM to load before trying to find elements
+    window.addEventListener('DOMContentLoaded', (event) => {
         const imageInput = document.getElementById('image-input');
-        // const uploadButton = document.getElementById('upload-button'); // Removed
         const originalImagePreview = document.getElementById('original-image-preview');
         const originalImagePlaceholder = document.getElementById('original-image-placeholder');
         const resultImagePreview = document.getElementById('result-image-preview');
@@ -173,8 +175,6 @@
             });
         }
 
-        // Removed: uploadButton.addEventListener('click', () => imageInput.click());
-
         imageInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (file) {
@@ -185,7 +185,7 @@
                     originalImagePreview.style.display = 'block';
                     originalImagePlaceholder.style.display = 'none';
                     
-                    // 2. Convert to Base64 for the API call
+                    // 2. Convert to Base64
                     uploadedFileBase64 = await fileToBase64(file);
                     
                     // 3. Update status and enable button
@@ -193,7 +193,7 @@
                     magicButton.disabled = false;
                     messageBox.textContent = '';
                 } catch (error) {
-                    messageBox.textContent = 'Error loading file.';
+                    messageBox.textContent = 'Error loading file. Try a different format or smaller file.';
                     magicButton.disabled = true;
                     console.error("File loading error:", error);
                 }
@@ -217,45 +217,34 @@
             resultActions.style.display = 'none';
             
             // 2. The critical step: Trigger a Streamlit rerun with query parameters
-            // This is how the HTML/JS front-end talks to the Python back-end
             const params = new URLSearchParams({
                 action: 'generate',
                 imageData: uploadedFileBase64,
                 prompt: prompt
             });
-            // Navigating to the current URL with parameters triggers app.py logic
             window.location.search = params.toString();
         });
 
         // 3. Logic to read the result from the Streamlit output after the rerun
-        // The Python app prints a special string (RESULT_IMAGE_BASE64:...) to the Streamlit output.
-        // The Streamlit Custom Component API (st.html) *replaces* the content, so we listen to the *entire* document's body content.
         function processStreamlitOutput() {
-            // Check the body's content (the output of st.code)
             const bodyContent = document.body.textContent;
             const prefix = "RESULT_IMAGE_BASE64:";
 
             if (bodyContent.includes(prefix)) {
-                // Extract the base64 data
                 const startIndex = bodyContent.indexOf(prefix) + prefix.length;
                 lastResultBase64 = bodyContent.substring(startIndex).trim();
                 
-                // Decode and display the image
                 const imageUrl = `data:image/jpeg;base64,${lastResultBase64}`;
                 resultImagePreview.src = imageUrl;
                 resultImagePreview.style.display = 'block';
                 resultImagePlaceholder.style.display = 'none';
                 
-                // Final state updates
                 messageBox.textContent = 'Transmutation complete!';
                 resultActions.style.display = 'flex';
                 
-            } else if (bodyContent.includes("Error: API Error:") || bodyContent.includes("Error: An unexpected error occurred:")) {
-                // Check if the output contains a known error message from the Python script
+            } else if (bodyContent.includes("Error:")) {
                 messageBox.textContent = 'Error during Transmutation. Check the console for details.';
-                // If you can extract the full error from the body, you can display it better here
             } else {
-                 // The default state for a fresh load or non-result output
                 return;
             }
             
@@ -264,14 +253,14 @@
             magicButtonText.style.display = 'block';
             loadingAmulet.style.display = 'none';
             
-            // Clear the query parameters to clean the URL bar and prevent accidental re-execution
+            // Clear the query parameters to clean the URL bar
             if (window.location.search) {
                  window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
 
-        // Run the processing function once on page load to catch the Python output
-        window.onload = processStreamlitOutput;
+        // Run the processing function once the DOM is ready
+        processStreamlitOutput(); 
         
         // Download function
         downloadButton.addEventListener('click', () => {
@@ -284,7 +273,7 @@
                 document.body.removeChild(link);
             }
         });
-
+    }); // End of DOMContentLoaded listener
     </script>
 </body>
 </html>
