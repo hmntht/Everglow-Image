@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Visual Transmutation Forge (TEST)</title>
+    <title>The Visual Transmutation Forge</title>
     
-    <!-- External Resources -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
 
-    <!-- Inline CSS for the new design -->
     <style>
         :root {
             --color-bg-dark: #1f2937; /* Gray-800 */
@@ -20,7 +18,8 @@
         }
 
         body {
-            background-color: var(--color-bg-dark);
+            /* Note: body background should match Streamlit container background for seamless look */
+            background-color: var(--color-bg-dark); 
             color: var(--color-text-light);
             font-family: 'Inter', sans-serif;
             margin: 0;
@@ -131,20 +130,11 @@
         <div class="forge-card">
             
             <p style="color: #d1d5db; font-size: 1.1rem; margin-bottom: 2rem;">
-                Upload a source image and whisper your **Spell** to initiate the change.
+                Enter your **Spell** below to modify the uploaded image.
             </p>
             
-            <!-- FIXED: Uses <label> for native file selection -->
-            <div style="margin-bottom: 1.5rem;">
-                <label for="image-input" class="btn-magic" 
-                       style="display: inline-flex; align-items: center; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">
-                    <i class="ph ph-upload-simple" style="font-size: 1.2rem; margin-right: 0.5rem;"></i> Upload Source
-                </label>
-                <input type="file" id="image-input" accept="image/*" style="display: none;">
-            </div>
-
             <div id="input-status" style="font-size: 0.85rem; color: #9ca3af; margin-bottom: 1.5rem;">
-                Status: Ready to cast.
+                Status: Awaiting file upload via Streamlit widget above.
             </div>
 
             <textarea id="prompt-input" rows="4" placeholder="e.g., Change the person's shirt to leather armor, or 'Separate the main subject and place them on a clean, professional grey background.'" class="textarea-input" style="margin-bottom: 2rem;"></textarea>
@@ -161,7 +151,7 @@
                     <div style="font-size: 0.9rem; font-weight: 600; color: #d1d5db; margin-bottom: 0.5rem;">Source Image</div>
                     <div class="image-viewport">
                         <img id="original-image-preview" class="image-preview" src="#" alt="Original Uploaded Image" style="display: none;">
-                        <div id="original-image-placeholder" style="color: #9ca3af; padding: 2rem;">Upload to begin.</div>
+                        <div id="original-image-placeholder" style="color: #9ca3af; padding: 2rem;">Upload image above.</div>
                     </div>
                 </div>
 
@@ -184,11 +174,10 @@
         
     </div>
 
-    <!-- JavaScript Logic -->
     <script>
-    // FIX: Wait for the DOM to load before trying to find elements
     window.addEventListener('DOMContentLoaded', (event) => {
-        const imageInput = document.getElementById('image-input');
+        
+        // Element IDs
         const originalImagePreview = document.getElementById('original-image-preview');
         const originalImagePlaceholder = document.getElementById('original-image-placeholder');
         const resultImagePreview = document.getElementById('result-image-preview');
@@ -202,62 +191,88 @@
         const resultActions = document.getElementById('result-actions');
         const messageBox = document.getElementById('message-box');
         
-        // uploadedFileBase64 MUST be kept globally accessible for the magicButton logic
-        let uploadedFileBase64 = null; 
+        let uploadedFileBase64 = null;
         let lastResultBase64 = null;
 
-        // Utility to encode a file to Base64 (still needed for the magic button)
-        function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result.split(',')[1]); 
-                reader.onerror = error => reject(error);
-            });
-        }
 
-        // *** THIS IS THE TEMPORARY TEST BLOCK ***
-        imageInput.addEventListener('change', (event) => { 
-            const file = event.target.files[0];
-            if (file) {
+        // --- New Function: Check for Data from Python Backend ---
+        function checkPythonData() {
+            const bodyContent = document.body.textContent;
+            
+            // 1. Check for UPLOADED data passed from Python
+            const uploadPrefix = "UPLOADED_BASE64:";
+            const filenamePrefix = "UPLOADED_FILENAME:";
+            
+            if (bodyContent.includes(uploadPrefix)) {
+                
                 try {
-                    // 1. Display the original image using simple browser object URL (synchronous)
-                    const objectUrl = URL.createObjectURL(file);
-                    originalImagePreview.src = objectUrl;
+                    // Extract data
+                    const uploadStartIndex = bodyContent.indexOf(uploadPrefix) + uploadPrefix.length;
+                    const uploadEndIndex = bodyContent.indexOf(filenamePrefix);
+                    const base64Data = bodyContent.substring(uploadStartIndex, uploadEndIndex).trim();
+                    
+                    const filenameStartIndex = bodyContent.indexOf(filenamePrefix) + filenamePrefix.length;
+                    const filename = bodyContent.substring(filenameStartIndex).trim();
+
+                    uploadedFileBase64 = base64Data;
+
+                    // Display the image preview using the data URI
+                    originalImagePreview.src = `data:image/jpeg;base64,${uploadedFileBase64}`; 
                     originalImagePreview.style.display = 'block';
                     originalImagePlaceholder.style.display = 'none';
-                    
-                    // **Start Base64 conversion here, but don't wait for it**
-                    fileToBase64(file).then(base64 => {
-                        uploadedFileBase64 = base64;
-                        inputStatus.textContent = `Source loaded: ${file.name}. Ready to cast!`;
-                        magicButton.disabled = false;
-                        messageBox.textContent = '';
-                    }).catch(error => {
-                        // Handle Base64 conversion failure (e.g., file too large)
-                        uploadedFileBase64 = null;
-                        messageBox.textContent = 'Warning: Preview working, but Base64 conversion failed (file too large?).';
-                        magicButton.disabled = true; 
-                        console.error("Base64 conversion error:", error);
-                    });
-                    
-                    // 3. Update status (immediately, assuming preview works)
-                    inputStatus.textContent = `Source loaded: ${file.name}. Processing...`;
-                    messageBox.textContent = 'Preview working! Waiting for Base64 data...';
-                    magicButton.disabled = true; // Wait until Base64 is ready
-                    
+
+                    // Update status
+                    inputStatus.textContent = `Source loaded from Python: ${filename}`;
+                    magicButton.disabled = false;
+                    messageBox.textContent = 'Image is ready for casting.';
                 } catch (error) {
-                    messageBox.textContent = 'CRASH: An error occurred during file selection.';
+                    messageBox.textContent = 'Error parsing image data from Python.';
+                    console.error("Python data parsing error:", error);
                     magicButton.disabled = true;
-                    console.error("File loading error (in synchronous part):", error);
                 }
             }
-        });
-        // ********************************************
+
+
+            // 2. Check for RESULT data (from API call)
+            const resultPrefix = "RESULT_IMAGE_BASE64:";
+            if (bodyContent.includes(resultPrefix)) {
+                
+                const startIndex = bodyContent.indexOf(resultPrefix) + resultPrefix.length;
+                lastResultBase64 = bodyContent.substring(startIndex).trim();
+                
+                const imageUrl = `data:image/png;base64,${lastResultBase64}`; 
+                resultImagePreview.src = imageUrl;
+                resultImagePreview.style.display = 'block';
+                resultImagePlaceholder.style.display = 'none';
+                
+                messageBox.textContent = 'Transmutation complete!';
+                resultActions.style.display = 'flex';
+                
+                // Restore button state
+                magicButton.disabled = false;
+                magicButtonText.style.display = 'block';
+                loadingAmulet.style.display = 'none';
+                
+            } else if (bodyContent.includes("Error:")) {
+                messageBox.textContent = 'Error during Transmutation. Check the Streamlit logs for details.';
+                 // Restore button state in case of API error
+                magicButton.disabled = false;
+                magicButtonText.style.display = 'block';
+                loadingAmulet.style.display = 'none';
+            }
+
+
+            // 3. Clear the URL bar after API call
+            if (window.location.search) {
+                 window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+        // --- End New Function ---
+
 
         magicButton.addEventListener('click', () => {
             if (!uploadedFileBase64 || magicButton.disabled) {
-                messageBox.textContent = uploadedFileBase64 ? 'Processing last step...' : 'Please upload an image first.';
+                messageBox.textContent = 'Please upload an image first using the widget above.';
                 return;
             }
 
@@ -274,7 +289,7 @@
             messageBox.textContent = 'Casting spell... please wait (This may take 30-60 seconds).';
             resultActions.style.display = 'none';
             
-            // 2. The critical step: Trigger a Streamlit rerun with query parameters
+            // 2. Trigger a Streamlit rerun with query parameters
             const params = new URLSearchParams({
                 action: 'generate',
                 imageData: uploadedFileBase64,
@@ -283,42 +298,9 @@
             window.location.search = params.toString();
         });
 
-        // 3. Logic to read the result from the Streamlit output after the rerun
-        function processStreamlitOutput() {
-            const bodyContent = document.body.textContent;
-            const prefix = "RESULT_IMAGE_BASE64:";
-
-            if (bodyContent.includes(prefix)) {
-                const startIndex = bodyContent.indexOf(prefix) + prefix.length;
-                lastResultBase64 = bodyContent.substring(startIndex).trim();
-                
-                const imageUrl = `data:image/png;base64,${lastResultBase64}`; 
-                resultImagePreview.src = imageUrl;
-                resultImagePreview.style.display = 'block';
-                resultImagePlaceholder.style.display = 'none';
-                
-                messageBox.textContent = 'Transmutation complete!';
-                resultActions.style.display = 'flex';
-                
-            } else if (bodyContent.includes("Error:")) {
-                messageBox.textContent = 'Error during Transmutation. Check the Streamlit logs for details.';
-            } else {
-                return;
-            }
-            
-            // Restore button state
-            magicButton.disabled = false;
-            magicButtonText.style.display = 'block';
-            loadingAmulet.style.display = 'none';
-            
-            // Clear the query parameters to clean the URL bar
-            if (window.location.search) {
-                 window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        }
-
-        // Run the processing function once the DOM is ready
-        processStreamlitOutput(); 
+        
+        // Run the processing function once the DOM is ready to check for data from Python
+        checkPythonData(); 
         
         // Download function
         downloadButton.addEventListener('click', () => {
@@ -331,7 +313,7 @@
                 document.body.removeChild(link);
             }
         });
-    }); // End of DOMContentLoaded listener
+    }); 
     </script>
 </body>
 </html>
