@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Visual Transmutation Forge</title>
+    <title>The Visual Transmutation Forge (TEST)</title>
     
+    <!-- External Resources -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
 
+    <!-- Inline CSS for the new design -->
     <style>
         :root {
             --color-bg-dark: #1f2937; /* Gray-800 */
@@ -132,6 +134,7 @@
                 Upload a source image and whisper your **Spell** to initiate the change.
             </p>
             
+            <!-- FIXED: Uses <label> for native file selection -->
             <div style="margin-bottom: 1.5rem;">
                 <label for="image-input" class="btn-magic" 
                        style="display: inline-flex; align-items: center; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">
@@ -181,6 +184,7 @@
         
     </div>
 
+    <!-- JavaScript Logic -->
     <script>
     // FIX: Wait for the DOM to load before trying to find elements
     window.addEventListener('DOMContentLoaded', (event) => {
@@ -198,46 +202,64 @@
         const resultActions = document.getElementById('result-actions');
         const messageBox = document.getElementById('message-box');
         
-        let uploadedFileBase64 = null;
+        // uploadedFileBase64 MUST be kept globally accessible for the magicButton logic
+        let uploadedFileBase64 = null; 
         let lastResultBase64 = null;
 
-        // Utility to encode a file to Base64
+        // Utility to encode a file to Base64 (still needed for the magic button)
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
-                // Only get the base64 data part (after the comma)
                 reader.onload = () => resolve(reader.result.split(',')[1]); 
                 reader.onerror = error => reject(error);
             });
         }
 
-        imageInput.addEventListener('change', async (event) => {
+        // *** THIS IS THE TEMPORARY TEST BLOCK ***
+        imageInput.addEventListener('change', (event) => { 
             const file = event.target.files[0];
             if (file) {
                 try {
-                    // 1. Convert to Base64 first (This is essential for the API call and is the robust preview method)
-                    uploadedFileBase64 = await fileToBase64(file); 
-                    
-                    // 2. Use the Base64 data for the preview
-                    originalImagePreview.src = `data:${file.type};base64,${uploadedFileBase64}`;
+                    // 1. Display the original image using simple browser object URL (synchronous)
+                    const objectUrl = URL.createObjectURL(file);
+                    originalImagePreview.src = objectUrl;
                     originalImagePreview.style.display = 'block';
                     originalImagePlaceholder.style.display = 'none';
                     
-                    // 3. Update status
-                    inputStatus.textContent = `Source loaded: ${file.name}`;
-                    magicButton.disabled = false;
-                    messageBox.textContent = '';
+                    // **Start Base64 conversion here, but don't wait for it**
+                    fileToBase64(file).then(base64 => {
+                        uploadedFileBase64 = base64;
+                        inputStatus.textContent = `Source loaded: ${file.name}. Ready to cast!`;
+                        magicButton.disabled = false;
+                        messageBox.textContent = '';
+                    }).catch(error => {
+                        // Handle Base64 conversion failure (e.g., file too large)
+                        uploadedFileBase64 = null;
+                        messageBox.textContent = 'Warning: Preview working, but Base64 conversion failed (file too large?).';
+                        magicButton.disabled = true; 
+                        console.error("Base64 conversion error:", error);
+                    });
+                    
+                    // 3. Update status (immediately, assuming preview works)
+                    inputStatus.textContent = `Source loaded: ${file.name}. Processing...`;
+                    messageBox.textContent = 'Preview working! Waiting for Base64 data...';
+                    magicButton.disabled = true; // Wait until Base64 is ready
+                    
                 } catch (error) {
-                    messageBox.textContent = 'Error loading file. Check file size/format.';
+                    messageBox.textContent = 'CRASH: An error occurred during file selection.';
                     magicButton.disabled = true;
-                    console.error("File loading error:", error);
+                    console.error("File loading error (in synchronous part):", error);
                 }
             }
         });
+        // ********************************************
 
         magicButton.addEventListener('click', () => {
-            if (!uploadedFileBase64 || magicButton.disabled) return;
+            if (!uploadedFileBase64 || magicButton.disabled) {
+                messageBox.textContent = uploadedFileBase64 ? 'Processing last step...' : 'Please upload an image first.';
+                return;
+            }
 
             const prompt = promptInput.value.trim();
             if (!prompt) {
@@ -270,7 +292,6 @@
                 const startIndex = bodyContent.indexOf(prefix) + prefix.length;
                 lastResultBase64 = bodyContent.substring(startIndex).trim();
                 
-                // Note: The model returns a base64 string for a processed image, typically PNG/JPEG
                 const imageUrl = `data:image/png;base64,${lastResultBase64}`; 
                 resultImagePreview.src = imageUrl;
                 resultImagePreview.style.display = 'block';
@@ -303,7 +324,6 @@
         downloadButton.addEventListener('click', () => {
             if (lastResultBase64) {
                 const link = document.createElement('a');
-                // Use image/png for download, as that's what the model often outputs
                 link.href = `data:image/png;base64,${lastResultBase64}`; 
                 link.download = 'transmuted_image.png';
                 document.body.appendChild(link);
